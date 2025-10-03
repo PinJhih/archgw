@@ -169,6 +169,22 @@ static_resources:
                           "@type": type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip
                           memory_level: 3
                           window_bits: 10
+                  - name: envoy.filters.http.wasm_es_logger
+                    typed_config:
+                      "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+                      type_url: type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+                      value:
+                        config:
+                          name: "http_config"
+                          root_id: es_logger
+                          configuration:
+                            "@type": "type.googleapis.com/google.protobuf.StringValue"
+                            value: ""
+                          vm_config:
+                            runtime: "envoy.wasm.runtime.v8"
+                            code:
+                              local:
+                                filename: "/etc/envoy/proxy-wasm-plugins/es_logger.wasm"
                   - name: envoy.filters.http.wasm_prompt
                     typed_config:
                       "@type": type.googleapis.com/udpa.type.v1.TypedStruct

@@ -3,7 +3,7 @@ FROM rust:1.82.0 AS builder
 RUN rustup -v target add wasm32-wasip1
 WORKDIR /arch
 COPY crates .
-RUN cargo build --release --target wasm32-wasip1 -p prompt_gateway -p llm_gateway
+RUN cargo build --release --target wasm32-wasip1 -p prompt_gateway -p llm_gateway -p es_logger
 RUN cargo build --release -p brightstaff
 
 FROM docker.io/envoyproxy/envoy:v1.34-latest AS envoy
@@ -26,6 +26,7 @@ RUN set -eux; \
 
 COPY --from=builder /arch/target/wasm32-wasip1/release/prompt_gateway.wasm /etc/envoy/proxy-wasm-plugins/prompt_gateway.wasm
 COPY --from=builder /arch/target/wasm32-wasip1/release/llm_gateway.wasm /etc/envoy/proxy-wasm-plugins/llm_gateway.wasm
+COPY --from=builder /arch/target/wasm32-wasip1/release/es_logger.wasm /etc/envoy/proxy-wasm-plugins/es_logger.wasm
 COPY --from=builder /arch/target/release/brightstaff /app/brightstaff
 COPY --from=envoy /usr/local/bin/envoy /usr/local/bin/envoy
 
