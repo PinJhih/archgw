@@ -64,8 +64,6 @@ static_resources:
                   typed_config:
                     "@type": type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog
                     path: "/var/log/access_ingress.log"
-                    format: |
-                     [%START_TIME%] "%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%" %RESPONSE_CODE% %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT% %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%" "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%" "%UPSTREAM_HOST%" "%UPSTREAM_CLUSTER%"
                 route_config:
                   name: local_routes
                   virtual_hosts:
@@ -80,6 +78,23 @@ static_resources:
                             cluster: arch_prompt_gateway_listener
                             timeout: {{ prompt_gateway_listener.timeout }}
                 http_filters:
+                  - name: envoy.filters.http.wasm_es_logger
+                    typed_config:
+                      "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+                      type_url: type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+                      value:
+                        config:
+                          name: "http_config"
+                          root_id: es_logger
+                          configuration:
+                            "@type": "type.googleapis.com/google.protobuf.StringValue"
+                            value: ""
+                          vm_config:
+                            runtime: "envoy.wasm.runtime.v8"
+                            code:
+                              local:
+                                filename: "/etc/envoy/proxy-wasm-plugins/es_logger.wasm"
+
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
@@ -119,8 +134,6 @@ static_resources:
                   typed_config:
                     "@type": type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog
                     path: "/var/log/access_ingress_prompt.log"
-                    format: |
-                     [%START_TIME%] "%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%" %RESPONSE_CODE% %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT% %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%" "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%" "%UPSTREAM_HOST%" "%UPSTREAM_CLUSTER%"
                 route_config:
                   name: local_routes
                   virtual_hosts:
@@ -144,7 +157,7 @@ static_resources:
                           route:
                             auto_host_rewrite: true
                             cluster: {{ llm_cluster_name }}
-                            timeout: 300s
+                            timeout: 60s
                       {% endfor %}
 
                       {% if agent_orchestrator %}
@@ -157,7 +170,7 @@ static_resources:
                           route:
                             auto_host_rewrite: true
                             cluster: {{ agent_orchestrator }}
-                            timeout: 300s
+                            timeout: 60s
                       {% endif %}
                 http_filters:
                   - name: envoy.filters.http.compressor
@@ -219,6 +232,7 @@ static_resources:
                             code:
                               local:
                                 filename: "/etc/envoy/proxy-wasm-plugins/llm_gateway.wasm"
+
                   - name: envoy.filters.http.decompressor
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.decompressor.v3.Decompressor
@@ -230,6 +244,24 @@ static_resources:
                           chunk_size: 8192
                           # If this ratio is set too low, then body data will not be decompressed completely.
                           max_inflate_ratio: 1000
+
+                  - name: envoy.filters.http.wasm_es_logger
+                    typed_config:
+                      "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+                      type_url: type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+                      value:
+                        config:
+                          name: "http_config"
+                          root_id: es_logger
+                          configuration:
+                            "@type": "type.googleapis.com/google.protobuf.StringValue"
+                            value: ""
+                          vm_config:
+                            runtime: "envoy.wasm.runtime.v8"
+                            code:
+                              local:
+                                filename: "/etc/envoy/proxy-wasm-plugins/es_logger.wasm"
+
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
@@ -269,8 +301,6 @@ static_resources:
                   typed_config:
                     "@type": type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog
                     path: "/var/log/access_internal.log"
-                    format: |
-                     [%START_TIME%] "%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%" %RESPONSE_CODE% %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT% %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%" "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%" "%UPSTREAM_HOST%" "%UPSTREAM_CLUSTER%"
                 route_config:
                   name: local_routes
                   virtual_hosts:
@@ -288,7 +318,7 @@ static_resources:
                           route:
                             auto_host_rewrite: true
                             cluster: {{ internal_cluster }}
-                            timeout: 300s
+                            timeout: 60s
                         {% endfor %}
 
                         {% for cluster_name, cluster in arch_clusters.items() %}
@@ -301,9 +331,26 @@ static_resources:
                           route:
                             auto_host_rewrite: true
                             cluster: {{ cluster_name }}
-                            timeout: 300s
+                            timeout: 60s
                         {% endfor %}
                 http_filters:
+                  - name: envoy.filters.http.wasm_es_logger
+                    typed_config:
+                      "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+                      type_url: type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+                      value:
+                        config:
+                          name: "http_config"
+                          root_id: es_logger
+                          configuration:
+                            "@type": "type.googleapis.com/google.protobuf.StringValue"
+                            value: ""
+                          vm_config:
+                            runtime: "envoy.wasm.runtime.v8"
+                            code:
+                              local:
+                                filename: "/etc/envoy/proxy-wasm-plugins/es_logger.wasm"
+
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
@@ -343,8 +390,6 @@ static_resources:
                   typed_config:
                     "@type": type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog
                     path: "/var/log/access_llm.log"
-                    format: |
-                     [%START_TIME%] "%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%" %RESPONSE_CODE% %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT% %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%" "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%" "%UPSTREAM_HOST%" "%UPSTREAM_CLUSTER%"
                 route_config:
                   name: local_routes
                   virtual_hosts:
@@ -397,6 +442,24 @@ static_resources:
                         name: envoy.compression.brotli.decompressor
                         typed_config:
                           "@type": type.googleapis.com/envoy.extensions.compression.brotli.decompressor.v3.Brotli
+                        
+                  - name: envoy.filters.http.wasm_es_logger
+                    typed_config:
+                      "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+                      type_url: type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+                      value:
+                        config:
+                          name: "http_config"
+                          root_id: es_logger
+                          configuration:
+                            "@type": "type.googleapis.com/google.protobuf.StringValue"
+                            value: ""
+                          vm_config:
+                            runtime: "envoy.wasm.runtime.v8"
+                            code:
+                              local:
+                                filename: "/etc/envoy/proxy-wasm-plugins/es_logger.wasm"
+
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
@@ -435,8 +498,6 @@ static_resources:
                   typed_config:
                     "@type": type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog
                     path: "/var/log/access_llm.log"
-                    format: |
-                     [%START_TIME%] "%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%" %RESPONSE_CODE% %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT% %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%" "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%" "%UPSTREAM_HOST%" "%UPSTREAM_CLUSTER%"
                 route_config:
                   name: local_routes
                   virtual_hosts:
@@ -460,7 +521,7 @@ static_resources:
                           route:
                             auto_host_rewrite: true
                             cluster: {{ llm_cluster_name }}
-                            timeout: 300s
+                            timeout: 60s
                       {% endfor %}
                         - match:
                             prefix: "/"
@@ -503,6 +564,24 @@ static_resources:
                             code:
                               local:
                                 filename: "/etc/envoy/proxy-wasm-plugins/llm_gateway.wasm"
+                  
+                  - name: envoy.filters.http.wasm_es_logger
+                    typed_config:
+                      "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+                      type_url: type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+                      value:
+                        config:
+                          name: "http_config"
+                          root_id: es_logger
+                          configuration:
+                            "@type": "type.googleapis.com/google.protobuf.StringValue"
+                            value: ""
+                          vm_config:
+                            runtime: "envoy.wasm.runtime.v8"
+                            code:
+                              local:
+                                filename: "/etc/envoy/proxy-wasm-plugins/es_logger.wasm"
+
                   - name: envoy.filters.http.decompressor
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.decompressor.v3.Decompressor
@@ -526,6 +605,31 @@ static_resources:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
 
   clusters:
+
+    - name: elasticsearch
+      connect_timeout: 5s
+      type: LOGICAL_DNS
+      dns_lookup_family: V4_ONLY
+      lb_policy: ROUND_ROBIN
+      load_assignment:
+        cluster_name: elasticsearch
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: es.coding-guy.space
+                      port_value: 443
+                  hostname: es.coding-guy.space
+      transport_socket:
+        name: envoy.transport_sockets.tls
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+          sni: es.coding-guy.space
+          common_tls_context:
+            tls_params:
+              tls_minimum_protocol_version: TLSv1_2
+              tls_maximum_protocol_version: TLSv1_3
 
     - name: arch
       connect_timeout: 0.5s
@@ -622,56 +726,6 @@ static_resources:
         typed_config:
           "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
           sni: api.x.ai
-          common_tls_context:
-            tls_params:
-              tls_minimum_protocol_version: TLSv1_2
-              tls_maximum_protocol_version: TLSv1_3
-
-    - name: moonshotai
-      connect_timeout: 0.5s
-      type: LOGICAL_DNS
-      dns_lookup_family: V4_ONLY
-      lb_policy: ROUND_ROBIN
-      load_assignment:
-        cluster_name: moonshotai
-        endpoints:
-          - lb_endpoints:
-              - endpoint:
-                  address:
-                    socket_address:
-                      address: api.moonshot.ai
-                      port_value: 443
-                  hostname: "api.moonshot.ai"
-      transport_socket:
-        name: envoy.transport_sockets.tls
-        typed_config:
-          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
-          sni: api.moonshot.ai
-          common_tls_context:
-            tls_params:
-              tls_minimum_protocol_version: TLSv1_2
-              tls_maximum_protocol_version: TLSv1_3
-
-    - name: zhipu
-      connect_timeout: 0.5s
-      type: LOGICAL_DNS
-      dns_lookup_family: V4_ONLY
-      lb_policy: ROUND_ROBIN
-      load_assignment:
-        cluster_name: zhipu
-        endpoints:
-          - lb_endpoints:
-              - endpoint:
-                  address:
-                    socket_address:
-                      address: open.bigmodel.cn
-                      port_value: 443
-                  hostname: "open.bigmodel.cn"
-      transport_socket:
-        name: envoy.transport_sockets.tls
-        typed_config:
-          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
-          sni: open.bigmodel.cn
           common_tls_context:
             tls_params:
               tls_minimum_protocol_version: TLSv1_2
