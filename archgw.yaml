@@ -1,0 +1,26 @@
+version: v0.1.0
+
+listeners:
+  ingress_traffic:
+    address: 0.0.0.0
+    port: 10000
+    message_format: openai
+    timeout: 30s
+
+  egress_traffic:
+    address: 0.0.0.0
+    port: 12000
+    message_format: openai
+    timeout: 30s
+
+# Centralized way to manage LLMs, manage keys, retry logic, failover and limits in a central way
+llm_providers:
+  - model: nchc/Llama3-TAIDE-LX-70B-Chat
+    base_url: https://inner-medusa.genai.nchc.org.tw
+    access_key: $NCHC_KEY
+    provider_interface: openai
+    default: true
+  - model: mypda/rednote-hilab/dots.ocr
+    base_url: https://vllm-demo.mypda.ai
+    access_key: $MYPDA_KEY
+    provider_interface: openai
